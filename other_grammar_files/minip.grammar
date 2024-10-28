@@ -1,0 +1,191 @@
+Package minipython;
+
+Helpers
+	digit = ['0' .. '9'];
+	letter = ['a' .. 'z']|['A' .. 'Z']; 
+	cr = 13; 
+	lf = 10;
+	all = [0..127]; 
+	eol = lf | cr | cr lf ;
+	not_eol = [all - [cr + lf]]; 
+	space = ' ';
+	quotes = 34;
+	s_quote = 39; 
+	underscore = '_';	
+	dot = '.';
+	
+Tokens
+	tab = 9;
+	dot = dot;
+	class_token = 'class';
+	def = 'def';
+	
+	l_sq_brack = '[';
+	r_sq_brack = ']';
+	l_par = '(';
+	r_par = ')';
+	
+	exclam = '!';
+	plusplus = '++';
+	minmin = '--';
+	
+	dmult = '**';
+	mult = '*';	
+	div = '/';
+	mod = '%';
+	
+	plus = '+';
+	minus = '-';
+	
+	eqeq = '==';
+	noteq = '!=';
+	lesseq = '<=';
+	moreeq = '>=';
+	less = '<';
+	great = '>';
+	
+	logic_and = '&&';
+	
+	diveq = '/=';
+	multeq = '*=';	
+	pluseq = '+=';		
+	mineq = '-=';			
+	assert = 'assert';
+	
+	len = 'len';
+	max = 'max';
+	min = 'min';
+	not = 'not';
+	none = 'None';
+	and = 'and';
+	or = 'or';
+	eq = '=';
+	comma=',';
+	if = 'if';
+	elif = 'elif';
+	else = 'else';
+	for = 'for';
+	in = 'in';
+	while = 'while';
+	print = 'print';
+	return = 'return';	
+	semi = ':';
+	true = 'true';
+	false = 'false';
+	dictt = 'dict';
+	quote = '"';
+	sinquote = ''';
+	blank = (' ' | lf | cr);
+	line_comment = '#' not_eol* eol; 
+	number = digit+ | digit+ '.' digit+ ;
+	string = quotes (letter | digit | underscore | space)* quotes | s_quote (letter | digit | underscore | space)* s_quote;
+	id = letter (letter | digit)*;
+	
+Ignored Tokens
+	blank, line_comment;
+	
+Productions
+
+	/* --------------- Programme and Function Productions --------------- */
+	
+	programme = commands* ;
+			
+	commands = {stat} statement |				
+				 {function} function ;
+	
+	function = {function} def identifier l_par argument? r_par semi statement ;
+	
+	argument = {argument} identifier eq_val? argument_helper* ;
+	
+	/* --------------- Statement Productions --------------- */
+
+	statement = {if_stmt} tab* if comparison semi statement |
+				  {while_stmt} tab* while comparison semi statement |
+				  {for_stmt} tab* for [l_id]:identifier in [r_id]:identifier semi statement |
+				  {return_stmt} tab* return expression |
+				  {print_stmt} tab* print expression more_expr* |
+				  {eq_stmt} tab* identifier eq expression |
+				  {mineq_stmt} tab* identifier mineq expression |
+				  {diveq_stmt} tab* identifier diveq expression |
+				  {array_stmt} tab* identifier l_sq_brack [l_exp]:expression r_sq_brack eq [r_exp]:expression |
+				  {assert_stmt} tab* assert expression more_expr? |
+				  {funccall_stmt} tab* function_call 
+				  ;
+	
+	/* --------------- Comparison Productions --------------- */
+	
+	/* Highest level comp */
+	comparison = {and_c} and_comp |
+			      {or_c} comparison or and_comp ;
+	
+	/* 3rd level comp */ 
+	and_comp = {not_c} not_comp |
+				{and_comparison} and_comp and not_comp ;
+	
+	/* 2nd level comp */
+	not_comp = {not_comparison} not standard_comp |
+					{st_comp} standard_comp ;
+	
+	/* Lowest level comp */
+	standard_comp = {greatc} [lpar]:expression great [rpar]:expression |
+					  {lessc} [lpar]:expression less [rpar]:expression |
+					  {greateqc} [lpar]:expression moreeq [rpar]:expression |
+					  {lesseqc} [lpar]:expression lesseq [rpar]:expression |
+					  {noteqc} [lpar]:expression noteq [rpar]:expression |
+					  {eqc} [lpar]:expression eqeq [rpar]:expression |
+					  {true} true |
+					  {false} false ;
+	
+	/* --------------- Expression Productions --------------- */
+	
+	/* Highest level expr */
+	expression = {mul} multiplication |
+					{add} expression plus multiplication |
+					{minus} expression minus multiplication ;
+	
+	/* 3rd level expr */
+	multiplication = {expo} exponential_expr|
+					    {multiplication} multiplication mult exponential_expr |
+						{division} multiplication div exponential_expr |
+						{mod} multiplication mod exponential_expr ;
+	
+	/* 2nd level expr */
+	exponential_expr = {st_expr} standard_expr |
+						{expon} exponential_expr dmult standard_expr ;
+	
+	/* Lowest level expr*/
+	standard_expr = {array} identifier l_sq_brack expression r_sq_brack |
+					{fun} function_call |
+					{value} value |
+					{identifier} identifier |
+					{plusplus} standard_expr plusplus  |
+					{minusminus} standard_expr minmin  |
+					{len} len l_par identifier r_par  |
+					{max} max l_par value more_val* r_par  |
+					{min} min l_par value more_val* r_par  |
+					{parexprpar} l_par expression r_par  |
+					{bracketval} l_sq_brack value more_val* r_sq_brack ; 
+	
+	
+	/* --------------- Value & Function Call Productions --------------- */
+	
+	function_call = {func} identifier l_par arglist? r_par;
+	arglist = {arglst} expression more_expr*;
+	
+	value = {funccall} identifier dot function_call |
+			{num} number |
+			{str} string |
+			{none} none ;
+	
+	identifier = id;
+	
+	/* --------------- Helper productions --------------- */
+	
+	more_expr = {more_expr} comma expression;
+	
+	more_val = {more_val} comma value;
+	
+	eq_val = {eq_val} eq value ;
+	
+	argument_helper = {argm_helper} comma identifier eq_val? ;	
+					   							  

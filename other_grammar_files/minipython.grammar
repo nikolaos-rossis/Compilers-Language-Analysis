@@ -1,0 +1,192 @@
+Package minipython;
+
+Helpers
+	digit = ['0' .. '9'];
+	letter = ['a' .. 'z']|['A' .. 'Z']; 
+	cr = 13; 
+	lf = 10;
+	all = [0..127]; 
+	eol = lf | cr | cr lf ;
+	not_eol = [all - [cr + lf]]; 
+
+Tokens
+	tab = 9;
+	class_token = 'class';
+	for = 'for';
+	in = 'in';	
+	assert = 'assert';
+	len = 'len';
+	max = 'max';
+	min = 'min';
+	l_sq_brack = '[';
+	r_sq_brack = ']';
+	l_par = '(';
+	r_par = ')';
+	noteq = '!=';
+	multeq = '*=';
+	dmult = '**';
+	mult = '*';
+	plusplus = '++';
+	pluseq = '+-';
+	plus = '+';
+	mineq = '-=';
+	minus = '-';
+	minmin = '--';
+	not = 'not';
+	lesseq = '<=';
+	moreeq = '>=';
+	less = '<';
+	great = '>';	
+	dot = '.';
+	none = 'None';
+	mod = '%';
+	slasheq = '/=';
+	diveq = '/=';
+	div = '/';
+	eqeq = '==';
+	exclam = '!';
+	dictt = 'dict';
+	def = 'def';
+	logic_and = '&&';
+	and = 'and';
+	or = 'or';
+	eq = '=';
+	comma=',';
+	if = 'if';
+	elif = 'elif';
+	while = 'while';
+	print = 'print';
+	return = 'return';	
+	true = 'true';
+	semi = ':';
+	false = 'false';
+	else = 'else';
+	quote = '"';
+	sinquote = ''';
+	blank = (' ' | lf | cr);
+	line_comment = '#' not_eol* eol; 
+	number = digit+;
+	id = letter (letter | digit)*;
+
+Ignored Tokens
+	blank, line_comment;
+	
+Productions
+	programme = commands*;
+			
+	commands ={stat} statement|				
+				 {function} function ;
+	
+	function = {function} def identifier l_par argument? r_par semi statement ;
+	
+	argument = {argument} identifier argument_optional? argument_optional2* ;
+	
+	argument_optional2 = {eqval2} comma identifier argument_optional? ;
+	argument_optional = {eqval} eq expression* ;
+
+	
+/* --------------- Productions for statements --------------- */
+
+	statement ={cond}cond_statement|
+				  {ass} assign_statement |
+				  {pr} print_statement |
+				  {for} for_statement |
+				  {while} while_statement |
+				  {return} return_statement |
+				  {expr} expression_statement |
+				  {assert} assert_statement 
+				  ;
+				  
+	cond_statement = {if}tab* if comp_expr semi statement ;
+	assign_statement = {assign}tab* [expr1]:expression assign_op [expr2]:expression ;
+	print_statement = {print}tab* print expression assert_optional*;
+	while_statement = {while}tab* while comp_expr semi statement ;
+	for_statement = {for}tab* for [sth1]:something in [sth2]:something semi statement ;
+	return_statement = {return}tab* return expression;
+	expression_statement = {expr} tab* expression ;
+	assert_statement = {ass} tab* assert expression assert_optional? ;
+	assert_optional = {ass_help} comma expression;
+
+	
+/* --------------- Productions for comparisons --------------- */
+
+	comp_expr = log_expression;
+	
+	log_expression = {andc} log_expression log_op not_expression| 
+					 {notexpr} not_expression;
+	not_expression = {notc} not comparison_expr | 
+						{comp}comparison_expr;				 
+					 
+	comparison_expr = {lessc} [lpar]:expression comp_op [rpar]:expression|
+					 {expr} expression;
+					 
+/* --------------- Productions for expressions --------------- */					 
+					 
+	expression = {addop} term add_op expression |
+				 {unary} term unary_op |
+				 {len} len term |
+				 {maxmin} sort_op term |			/* May want change */
+				 {term} term;
+					
+    term = {operation} something mult_op term |
+			{factor} something;
+
+	
+/* --------------- Productions for operators --------------- */	
+
+	assign_op = {eq} eq|
+				{mineq} mineq |
+				{pluseq} pluseq |
+				{diveq} diveq ;
+
+	add_op = {plus} plus|
+			{minus} minus |
+			{dot} dot;				/* Added this to not cause ambiguity problems */
+			
+	unary_op = {plpl} plusplus |
+			   {minmin} minmin ;
+			
+	mult_op = {mult} mult |
+			  {div} div |
+			  {mod} mod |
+			  {pwr} dmult ;
+			  
+	log_op = {and} and |
+			 {or} or;
+			  
+	comp_op = {less} less |
+			  {greater} great |
+			  {lesseq} lesseq |
+			  {greateq} moreeq |
+			  {eqeq} eqeq |
+			  {noteq} noteq ;
+			  
+	sort_op = {max} max|
+			  {min} min ;
+		
+/* --------------- Productions for something --------------- */
+		
+	parenthesis = {simple} expr_parenthesis
+				  ;
+				  
+	brackets = {bracks} simple_brackets;
+		
+	expr_parenthesis = {simple} l_par expression? assert_optional* r_par;
+	simple_brackets = {simplebr} l_sq_brack expression assert_optional* r_sq_brack;
+			
+	something ={val} value |
+				  {ident} identifier |
+				  {par} parenthesis |
+				  {bracks} simple_brackets
+				  ;
+	
+	value =	{stringlit} [q1]:quotes id* [q2]:quotes |
+			{number} number |
+			{none} none |
+			{true} true|
+			{false} false;
+			
+	quotes = {quote} quote |
+			 {sinq} sinquote;
+			 
+	identifier = {identifier} id;

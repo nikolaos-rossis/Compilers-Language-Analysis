@@ -1,0 +1,260 @@
+Package minipython;
+
+Helpers
+	digit = ['0' .. '9'];
+	letter = ['a' .. 'z']|['A' .. 'Z']; 
+	cr = 13; 
+	lf = 10;
+	all = [0..127]; 
+	eol = lf | cr | cr lf ;
+	not_eol = [all - [cr + lf]]; 
+	space = ' ';
+	quotes = 34;
+	s_quote = 39; 
+	underscore = '_';	
+	dot = '.';
+	
+Tokens
+	tab = 9;
+	dot = dot;
+	class_token = 'class';
+	def = 'def';
+	
+	l_sq_brack = '[';
+	r_sq_brack = ']';
+	l_par = '(';
+	r_par = ')';
+	
+	exclam = '!';
+	plusplus = '++';
+	minmin = '--';
+	
+	dmult = '**';
+	mult = '*';	
+	div = '/';
+	mod = '%';
+	
+	plus = '+';
+	minus = '-';
+	
+	eqeq = '==';
+	noteq = '!=';
+	lesseq = '<=';
+	moreeq = '>=';
+	less = '<';
+	great = '>';
+	
+	logic_and = '&&';
+	
+	diveq = '/=';
+	multeq = '*=';	
+	pluseq = '+=';		
+	mineq = '-=';			
+	assert = 'assert';
+	
+	len = 'len';
+	max = 'max';
+	min = 'min';
+	not = 'not';
+	none = 'None';
+	and = 'and';
+	or = 'or';
+	eq = '=';
+	comma=',';
+	if = 'if';
+	elif = 'elif';
+	else = 'else';
+	for = 'for';
+	in = 'in';
+	while = 'while';
+	print = 'print';
+	return = 'return';	
+	semi = ':';
+	true = 'true';
+	false = 'false';
+	dictt = 'dict';
+	quote = '"';
+	sinquote = ''';
+	blank = (' ' | lf | cr);
+	line_comment = '#' not_eol* eol; 
+	number = digit+ | digit+ '.' digit+ ;
+	string = quotes (letter | digit | underscore | space)* quotes | s_quote (letter | digit | underscore | space)* s_quote;
+	id = letter (letter | digit)*;
+	
+Ignored Tokens
+	blank, line_comment;
+	
+Productions
+
+	/* --------------- Programme and Function Productions --------------- */
+	
+	programme = commands* {-> New programme([commands])};
+			
+	commands = {stat} statement {-> New commands.stat(statement)} |				
+				 {funct} function {-> New commands.funct(function) } ;
+	
+	function = def identifier l_par argument? r_par semi statement {-> New function(identifier.expression, [argument], statement) } ;
+	
+	argument = identifier eq_val? argument_helper* {-> New argument(identifier.expression, [eq_val], [argument_helper]) } ;
+	
+	/* --------------- Statement Productions --------------- */
+
+	statement = {if_stmt} tab* if comparison semi statement {-> New statement.if_stmt(comparison, statement) } |
+				  {while_stmt} tab* while comparison semi statement {-> New statement.while_stmt(comparison, statement) } |
+				  {for_stmt} tab* for [l_id]:identifier in [r_id]:identifier semi statement {-> New statement.for_stmt(l_id.expression, r_id.expression, statement) } |
+				  {return_stmt} tab* return expression {-> New statement.return_stmt(expression) } |
+				  {print_stmt} tab* print expression more_expr* {-> New statement.print_stmt(expression, [more_expr.expression]) } |
+				  {eq_stmt} tab* identifier eq expression {-> New statement.eq_stmt(identifier.expression, expression) } |
+				  {mineq_stmt} tab* identifier mineq expression {-> New statement.mineq_stmt(identifier.expression, expression) } |
+				  {diveq_stmt} tab* identifier diveq expression {-> New statement.diveq_stmt(identifier.expression, expression) } |
+				  {array_stmt} tab* identifier l_sq_brack [l_exp]:expression r_sq_brack eq [r_exp]:expression {-> New statement.array_stmt(identifier.expression, l_exp, r_exp) } |
+				  {assert_stmt} tab* assert expression more_expr? {-> New statement.assert_stmt(expression, [more_expr.expression]) } |
+				  {funccall_stmt} tab* function_call {-> New statement.funccall_stmt(function_call) }
+				  ;
+	
+	/* --------------- Comparison Productions --------------- */
+	
+	/* Highest level comp */
+	comparison = {andc} and_comp {-> and_comp.comparison} |
+			      {orc} comparison or and_comp {-> New comparison.orc(comparison, and_comp.comparison) } ;
+	
+	/* 3rd level comp */ 
+	and_comp {-> comparison} = {notc} not_comp {-> not_comp.expression } |
+				{andc} and_comp and not_comp {-> New.comparison.and_comparison(l_comp.comparison, r_comp.comparison)}
+				;
+	
+	/* 2nd level comp */
+	not_comp {-> comparison} = {notc} not standard_comp {-> New comparison.notc(standard_comp.comparison) } |
+					{standard_comp} standard_comp {-> standard_comp.comparison} ;
+	
+	/* Lowest level comp */
+	standard_comp {-> comparison} = {greatc} [lpar]:expression great [rpar]:expression {-> New comparison.greatc(lpar, rpar) } |
+					  {lessc} [lpar]:expression less [rpar]:expression {-> New comparison.lessc(lpar, rpar) } |
+					  {greateqc} [lpar]:expression moreeq [rpar]:expression  {-> New comparison.greateqc(lpar, rpar) } |
+					  {lesseqc} [lpar]:expression lesseq [rpar]:expression {-> New comparison.lesseqc(lpar, rpar) } |
+					  {noteqc} [lpar]:expression noteq [rpar]:expression {-> New comparison.noteqc(lpar, rpar) } |
+					  {eqc} [lpar]:expression eqeq [rpar]:expression {-> New comparison.eqc(lpar, rpar) } |
+					  {true} true {-> New comparison.true() } |
+					  {false} false {-> New comparison.false() } ;
+	
+	/* --------------- Expression Productions --------------- */
+	
+	/* Highest level expr */
+	expression = {mul} multiplication {-> multiplication.expression} |
+					{add} expression plus multiplication {-> New expression.add(expression, multiplication.expression) } |
+					{minus} expression minus multiplication {-> New expression.minus(expression, multiplication.expression) } ;
+	
+	/* 3rd level expr */
+	multiplication {-> expression} = {expon} exponential_expr {-> exponential_expr.expression}|
+					    {multiplication} multiplication mult exponential_expr {-> New expression.multiplication(multiplication.expression, exponential_expr.expression) } |
+						{division} multiplication div exponential_expr {-> New expression.division(multiplication.expression, exponential_expr.expression) } |
+						{modulus} multiplication mod exponential_expr {-> New expression.modulus(multiplication.expression, exponential_expr.expression) } ;
+	
+	/* 2nd level expr */
+	exponential_expr {-> expression} = {st_expr} standard_expr {-> standard_expr.expression} |
+						{expon} exponential_expr dmult standard_expr {-> New expression.expon(exponential_expr.expression, standard_expr.expression) } ;
+	
+	/* Lowest level expr*/
+	standard_expr {-> expression} = {array} identifier l_sq_brack expression r_sq_brack {-> New expression.array(identifier.expression, expression)} |
+					{func} function_call {-> New expression.func(function_call) } |
+					{identifier} identifier {-> identifier.expression } |
+					{value} value {-> value.expression } |
+					{plusplus} standard_expr plusplus {-> New expression.plusplus(standard_expr.expression) }  |
+					{minmin} standard_expr minmin {-> New expression.minmin(standard_expr.expression) }  |
+					{len} len l_par identifier r_par {-> New expression.len(identifier.expression) }  |
+					{max} max l_par value more_val* r_par {-> New expression.max(value.expression, [more_val.expression]) }  |
+					{min} min l_par value more_val* r_par {-> New expression.min(value.expression, [more_val.expression]) }  |
+					{par} l_par expression r_par {-> expression}  |
+					{sqbr} l_sq_brack value more_val* r_sq_brack {-> New expression.sqbr(value.expression, [more_val.expression]) } ; 
+	
+	
+	/* --------------- Value & Function Call Productions --------------- */
+	
+	function_call = identifier l_par arglist? r_par {-> New function_call(identifier.expression, [arglist]) };
+	arglist = expression more_expr* {-> New arglist(expression, [more_expr.expression]) };
+	
+	value {-> expression} = {funccall} identifier dot function_call {-> New expression.funccall(identifier.expression, function_call) } |
+			{num} number {-> New expression.num(number) } |
+			{str} string {-> New expression.str(string)} |
+			{none} none {-> New expression.none(none) } ;
+	
+	identifier {-> expression} = id {-> New expression.ident(id) };
+	
+	/* --------------- Helper productions --------------- */
+	
+	more_expr {-> expression} = {more_expr} comma expression {-> value.expression };
+	
+	more_val{-> expression} = comma value {-> value.expression };
+	
+	eq_val = eq value {-> New eq_val(value.expression)} ;
+	
+	argument_helper = {argm_helper} comma identifier eq_val? {-> New argument_helper.argm_helper(identifier.expression, [eq_val]) };
+	
+Abstract Syntax Tree
+
+	programme = commands*;
+			
+	commands = {stat} statement |				
+				 {funct} function ;
+				
+	function = expression argument* statement;	
+
+	argument = expression eq_val* argument_helper*;				   
+					   
+	statement = {if_stmt} comparison statement |
+				  {while_stmt} comparison statement |
+				  {for_stmt} [l_id]:expression [r_id]:expression statement |
+				  {return_stmt} expression |
+				  {print_stmt} [l_expr]:expression [r_expr]:expression* |
+				  {eq_stmt} [l_expr]:expression [r_expr]:expression |
+				  {mineq_stmt} [l_expr]:expression [r_expr]:expression |
+				  {diveq_stmt} [l_expr]:expression [r_expr]:expression |
+				  {array_stmt} [id_expr]:expression [l_exp]:expression [r_exp]:expression |
+				  {assert_stmt} [l_expr]:expression [r_expr]:expression* |
+				  {funccall_stmt} function_call;
+				  
+	comparison  = {orc} [l_comp]:comparison [r_compa]:comparison |
+				   {andc} [l_comp]:comparison [r_comp]:comparison |
+				   {notc} comparison |
+				   {greatc} [lpar]:expression [rpar]:expression |
+				   {lessc} [lpar]:expression [rpar]:expression |
+				   {greateqc} [lpar]:expression [rpar]:expression |
+				   {lesseqc} [lpar]:expression [rpar]:expression |
+				   {noteqc} [lpar]:expression [rpar]:expression |
+				   {eqc} [lpar]:expression [rpar]:expression |
+				   {true} |
+				   {false};	
+				   
+	expression = {add} [l_exp]:expression [r_exp]:expression |
+				  {minus} [l_exp]:expression [r_exp]:expression |
+				  {multiplication} [l_exp]:expression [r_exp]:expression |
+				  {division} [l_exp]:expression [r_exp]:expression |
+				  {modulus} [l_exp]:expression [r_exp]:expression |
+				  {expon} [l_exp]:expression [r_exp]:expression |
+			      {array} [l_exp]:expression [r_exp]:expression |
+				  {func} function_call |
+				  {identifier} expression |
+				  {value} expression |
+				  {plusplus} expression |
+				  {minmin} expression |
+				  {len} expression |
+				  {max} [l_exp]:expression [r_exp]:expression* |
+				  {min} [l_exp]:expression [r_exp]:expression* |
+				  {par} expression |
+				  {sqbr} [l_exp]:expression [r_exp]:expression* |
+                  {funccall} expression function_call |
+                  {more_expr} expression |
+                  {more_val} expression |
+				  {num} number | 
+				  {str} string |
+                  {ident} id |
+			      {none} none;
+
+
+	function_call = expression arglist*;		
+
+	arglist = [l_expr]:expression [r_expr]:expression*;
+
+    eq_val = expression;
+
+    argument_helper = expression eq_val*;
